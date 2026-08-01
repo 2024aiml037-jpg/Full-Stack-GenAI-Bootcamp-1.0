@@ -16,7 +16,7 @@ class Calculator:
     def divide_numbers(self, a, b):
         """Function to divide two numbers."""
         if b == 0:
-            return "Error: Division by zero"
+            raise ZeroDivisionError("Cannot divide by zero")
         return a / b
 
 # Create an object (instance) of the Calculator class
@@ -32,5 +32,8 @@ print(f"The difference is: {result_sub}")
 result_mul = calc.multiply_numbers(5, 3)
 print(f"The product is: {result_mul}")
 
-result_div = calc.divide_numbers(5, 3)
-print(f"The quotient is: {result_div}")
+try:
+    result_div = calc.divide_numbers(5, 3)
+    print(f"The quotient is: {result_div}")
+except ZeroDivisionError as e:
+    print(f"Division failed: {e}")

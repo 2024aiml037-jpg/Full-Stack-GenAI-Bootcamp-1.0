@@ -5,13 +5,17 @@ from io import BytesIO
 
 try:
     from langchain_openai import ChatOpenAI
-except Exception:
+    _CHATOPENAI_IMPORT_ERROR = None
+except ImportError as e:
     ChatOpenAI = None
+    _CHATOPENAI_IMPORT_ERROR = e
 
 try:
     from langchain_anthropic import ChatAnthropic
-except Exception:
+    _CHATANTHROPIC_IMPORT_ERROR = None
+except ImportError as e:
     ChatAnthropic = None
+    _CHATANTHROPIC_IMPORT_ERROR = e
 
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -49,11 +53,17 @@ def build_multimodal_message(input_modality, prompt_text, uploaded_file):
 def get_llm(provider, model_name, temperature=0.2):
     if provider == "OpenAI":
         if ChatOpenAI is None:
-            raise RuntimeError("langchain_openai.ChatOpenAI not available")
+            raise RuntimeError(
+                "langchain_openai.ChatOpenAI is not available. "
+                "Install it with `pip install langchain-openai`."
+            ) from _CHATOPENAI_IMPORT_ERROR
         return ChatOpenAI(model=model_name, temperature=temperature)
     elif provider == "Anthropic":
         if ChatAnthropic is None:
-            raise RuntimeError("langchain_anthropic.ChatAnthropic not available")
+            raise RuntimeError(
+                "langchain_anthropic.ChatAnthropic is not available. "
+                "Install it with `pip install langchain-anthropic`."
+            ) from _CHATANTHROPIC_IMPORT_ERROR
         return ChatAnthropic(model=model_name, temperature=temperature)
     else:
         raise ValueError("Unknown provider")
@@ -140,13 +150,17 @@ def main():
             st.write(text_output)
             try:
                 from gtts import gTTS
-                tts = gTTS(text=text_output, lang="en")
-                buf = BytesIO()
-                tts.write_to_fp(buf)
-                buf.seek(0)
-                st.audio(buf.read(), format="audio/mp3")
-            except Exception:
+            except ImportError:
                 st.info("Install gTTS (`pip install gTTS`) to enable text-to-speech audio playback.")
+            else:
+                try:
+                    tts = gTTS(text=text_output, lang="en")
+                    buf = BytesIO()
+                    tts.write_to_fp(buf)
+                    buf.seek(0)
+                    st.audio(buf.read(), format="audio/mp3")
+                except Exception as e:
+                    st.error(f"Text-to-speech generation failed: {e}")
 
     st.markdown("---")
     st.caption("Set your API keys in environment variables `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` before running.")
