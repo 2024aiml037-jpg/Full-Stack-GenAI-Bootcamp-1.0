@@ -1,73 +1,32 @@
-import streamlit as st
-import os
 import base64
+import pathlib
+import sys
 from io import BytesIO
 
-try:
-    from langchain_openai import ChatOpenAI
-except Exception:
-    ChatOpenAI = None
+import streamlit as st
 
-try:
-    from langchain_anthropic import ChatAnthropic
-except Exception:
-    ChatAnthropic = None
+sys.path.append(str(pathlib.Path(__file__).resolve().parents[1]))
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from genai_utils import (  # noqa: E402
+    build_human_message,
+    get_chat_model,
+    load_env,
+    response_text,
+)
 
-def encode_bytes_to_base64(data: bytes) -> str:
-    return base64.b64encode(data).decode("utf-8")
+load_env()
 
-def build_multimodal_message(input_modality, prompt_text, uploaded_file):
-    if input_modality == "Text":
-        return HumanMessage(content=prompt_text)
-
-    # Image
-    if input_modality == "Image" and uploaded_file is not None:
-        raw = uploaded_file.read()
-        mime = uploaded_file.type or "image/png"
-        b64 = encode_bytes_to_base64(raw)
-        content = [
-            {"type": "text", "text": prompt_text or "Describe this image."},
-            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-        ]
-        return HumanMessage(content=content)
-
-    # Audio
-    if input_modality == "Audio" and uploaded_file is not None:
-        raw = uploaded_file.read()
-        mime = uploaded_file.type or "audio/mpeg"
-        b64 = encode_bytes_to_base64(raw)
-        content = [
-            {"type": "text", "text": prompt_text or "Transcribe this audio."},
-            {"type": "media", "mime_type": mime, "data": b64},
-        ]
-        return HumanMessage(content=content)
-
-    return HumanMessage(content=prompt_text or "")
-
-def get_llm(provider, model_name, temperature=0.2):
-    if provider == "OpenAI":
-        if ChatOpenAI is None:
-            raise RuntimeError("langchain_openai.ChatOpenAI not available")
-        return ChatOpenAI(model=model_name, temperature=temperature)
-    elif provider == "Anthropic":
-        if ChatAnthropic is None:
-            raise RuntimeError("langchain_anthropic.ChatAnthropic not available")
-        return ChatAnthropic(model=model_name, temperature=temperature)
-    else:
-        raise ValueError("Unknown provider")
 
 def main():
     st.title("Multimodal LangChain demo — Text / Image / Audio")
 
     st.sidebar.header("Settings")
-    provider = st.sidebar.selectbox("Provider", ["OpenAI", "Anthropic"])
-    model_name = st.sidebar.text_input("Model", "gpt-4o-mini" if provider == "OpenAI" else "claude-3.5-mini")
+    provider = st.sidebar.selectbox("Provider", ["OpenAI", "Anthropic", "Google", "Groq"])
+    model_name = st.sidebar.text_input("Model", "")
     temperature = st.sidebar.slider("Temperature", 0.0, 1.0, 0.2)
 
     st.header("Input")
-    input_modality = st.radio("Input modality", ["Text", "Image", "Audio"]) 
+    input_modality = st.radio("Input modality", ["Text", "Image", "Audio"])
     prompt_text = None
     uploaded_file = None
 
@@ -85,12 +44,17 @@ def main():
 
     if st.button("Generate"):
         try:
-            llm = get_llm(provider, model_name, temperature=temperature)
+            llm = get_chat_model(provider, model_name or None, temperature=temperature)
         except Exception as e:
             st.error(f"Failed to initialize model: {e}")
             return
 
-        message = build_multimodal_message(input_modality, prompt_text, uploaded_file)
+        message = build_human_message(
+            input_modality,
+            prompt_text,
+            data=uploaded_file.read() if uploaded_file is not None else None,
+            mime_type=uploaded_file.type if uploaded_file is not None else None,
+        )
 
         # Image-generation path (uses bind_tools style shown in the notebook)
         if output_modality == "Image":
@@ -109,7 +73,7 @@ def main():
                         st.image(base64.b64decode(img["base64"]))
                         st.success("Image displayed from model response")
                         return
-                st.write(ai_message.content if hasattr(ai_message, "content") else ai_message)
+                st.write(response_text(ai_message))
             except Exception as e:
                 st.error(f"Image generation failed: {e}")
             return
@@ -121,14 +85,7 @@ def main():
             st.error(f"Model invocation failed: {e}")
             return
 
-        # Show text output
-        text_output = None
-        if hasattr(response, "content"):
-            text_output = response.content
-        elif isinstance(response, str):
-            text_output = response
-        else:
-            text_output = str(response)
+        text_output = response_text(response)
 
         if output_modality == "Text":
             st.subheader("Text output")
@@ -149,7 +106,8 @@ def main():
                 st.info("Install gTTS (`pip install gTTS`) to enable text-to-speech audio playback.")
 
     st.markdown("---")
-    st.caption("Set your API keys in environment variables `OPENAI_API_KEY` or `ANTHROPIC_API_KEY` before running.")
+    st.caption("Set your API keys in a `.env` file (see `.env.example`) before running.")
+
 
 if __name__ == "__main__":
     main()
