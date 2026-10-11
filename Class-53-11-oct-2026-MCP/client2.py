@@ -6,6 +6,7 @@ from langchain.mcp import MCPAdapter
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 load_dotenv()
+
 model = ChatOpenAI(
     model="gpt-5.6",
     reasoning_effort="none"
