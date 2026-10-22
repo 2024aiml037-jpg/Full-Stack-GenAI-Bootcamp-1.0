@@ -42,7 +42,7 @@ if __name__ == "__main__":
     server.run(
         transport="streamable-http",
         host="127.0.0.1",
-        port=8000,
+        port=8001,
         stateless_http=True,
         json_response=True,
     )

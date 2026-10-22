@@ -35,9 +35,7 @@ from mcp.types import TextContent
 
 async def main():
 
-    async with Client(
-        "http://127.0.0.1:8000/mcp"
-    ) as client:
+    async with Client("http://127.0.0.1:8001/mcp") as client:
 
         tools_result = await client.list_tools()
 
