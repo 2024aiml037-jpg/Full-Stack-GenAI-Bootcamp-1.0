@@ -7,7 +7,7 @@ It connects the concepts below in one business use case:
 ```text
 USER
  ↓
-AI HOST (app.py)
+AI App (app.py) - Client
  ↓
 MCP Resources + Resource Template + Prompt
  ↓
