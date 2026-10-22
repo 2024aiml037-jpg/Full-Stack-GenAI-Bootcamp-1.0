@@ -9,6 +9,7 @@ load_dotenv()
 
 server = MCPServer("Company Policy MCP Server")
 
+##Data Source to Vector Database(in real time)
 POLICY_DOCS = [
     {
         "id": "flight-policy",
